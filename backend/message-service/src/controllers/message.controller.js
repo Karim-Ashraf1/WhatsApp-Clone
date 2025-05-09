@@ -66,10 +66,6 @@ export const getMessages = async (req, res) => {
     });
 
     res.status(200).json(processedMessages);
-
-    }).sort({ timestamp: 1 });
-    
-    return res.status(200).json(messages);
   } catch (error) {
     console.error('Error getting messages:', error);
     return res.status(500).json({ message: 'Internal server error' });
@@ -169,34 +165,15 @@ export const sendMessage = async (req, res) => {
       created_at: newMessage.createdAt,
       image: imageFileName ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${imageFileName}` : null,
       video: videoFileName ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${videoFileName}` : null
-    const { sender, receiver, content, type = 'text' } = req.body;
-    
-    if (!sender || !receiver || !content) {
-      return res.status(400).json({ message: 'Sender, receiver, and content are required' });
-    }
-    
-    const messageData = {
-      sender,
-      receiver,
-      content,
-      type,
-      timestamp: new Date(),
-      status: 'sent'
     };
-    
-    // Process with Socket.IO first (also saves to database)
-    const newMessage = await messageService.handleNewMessage(messageData);
-    
-    // Also publish to RabbitMQ for additional processing or integration with other services
-    if (messageService.rabbitInitialized) {
-      await messageService.publishToRabbitMQ('chat_exchange', 'chat_messages', {
-        ...messageData,
-        _id: newMessage._id,
-        source: 'api'
-      });
+
+    // Notify the receiver if they are online
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('newMessage', responseMessage);
     }
-    
-    return res.status(201).json(newMessage);
+
+    return res.status(201).json(responseMessage);
   } catch (error) {
     console.error('Error sending message:', error);
     return res.status(500).json({ message: 'Internal server error' });
