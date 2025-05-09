@@ -12,7 +12,6 @@ services:
       - api-gateway
     networks:
       - app-network
-    env_file: .env
 
   api-gateway:
     build: ./API-Gateway
@@ -23,7 +22,9 @@ services:
       - ./API-Gateway:/app
       - /app/node_modules
     depends_on:
-      - mongo
+      - user-service
+      - message-service
+      - redis
     networks:
       - app-network
 
@@ -37,7 +38,6 @@ services:
       - /app/node_modules
     depends_on:
       - mongo
-      - api-gateway
     networks:
       - app-network
 
@@ -51,21 +51,18 @@ services:
       - /app/node_modules
     depends_on:
       - mongo
-      - api-gateway
     networks:
       - app-network
 
   video-compression-service:
     build: ./backend/Video-Compression-Service
     ports:
-      - "8080:8080"
+      - "8085:8085"
     env_file: .env
     volumes:
       - ./backend/Video-Compression-Service:/app
       - /app/node_modules
       - ./uploads:/app/uploads
-    depends_on:
-      - api-gateway
     networks:
       - app-network
 
@@ -78,8 +75,6 @@ services:
       - ./backend/Image-Compression-Service:/usr/src/app
       - /usr/src/app/node_modules
       - ./uploads:/usr/src/app/uploads
-    depends_on:
-      - api-gateway
     networks:
       - app-network
 
@@ -91,7 +86,6 @@ services:
       - mongo-data:/data/db
     networks:
       - app-network
-    env_file: .env
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
@@ -105,6 +99,7 @@ services:
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
       - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
       - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
     depends_on:
       - mongo
     networks:
@@ -117,28 +112,17 @@ services:
     env_file: .env
     volumes:
       - ./backend/Audio-Service:/app
+      - /app/node_modules
       - ./uploads:/app/uploads
-    depends_on:
-      - mongo
-      - api-gateway
     networks:
       - app-network
 
-  broker-service:
-    build: ./backend/broker-service
-    env_file: .env
-    depends_on:
-      - rabbitmq
-    networks:
-      - app-network
-
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+  redis:
+    image: redis:latest
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "6378:6379"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - redis_data:/data
     networks:
       - app-network
 
@@ -149,4 +133,3 @@ networks:
 volumes:
   mongo-data:
   redis_data:
-  rabbitmq_data:

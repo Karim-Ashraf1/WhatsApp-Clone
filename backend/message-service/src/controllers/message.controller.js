@@ -52,7 +52,8 @@ export const getMessages = async (req, res) => {
       $or: [
         { sender: senderId, receiver: receiverId },
         { sender: receiverId, receiver: senderId }
-      ]}).sort({ createdAt: 1 });
+      ]
+    }).sort({ createdAt: 1 });
 
     // Process messages to ensure proper image and video URLs and timestamp field
     const processedMessages = messages.map(message => {
@@ -66,6 +67,7 @@ export const getMessages = async (req, res) => {
     });
 
     res.status(200).json(processedMessages);
+
   } catch (error) {
     console.error('Error getting messages:', error);
     return res.status(500).json({ message: 'Internal server error' });
@@ -148,7 +150,7 @@ export const sendMessage = async (req, res) => {
       }
     }
 
-    const newMessage = new Message({
+    const createdMessage = new Message({
       sender_id: senderId,
       receiver_id: receiverId,
       text: text || '',
@@ -157,12 +159,12 @@ export const sendMessage = async (req, res) => {
       status: 'sent'
     });
 
-    await newMessage.save();
+    await createdMessage.save();
 
     // Add the full URLs for the response
     const responseMessage = {
-      ...newMessage.toObject(),
-      created_at: newMessage.createdAt,
+      ...createdMessage.toObject(),
+      created_at: createdMessage.createdAt,
       image: imageFileName ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${imageFileName}` : null,
       video: videoFileName ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${videoFileName}` : null
     };
@@ -174,6 +176,7 @@ export const sendMessage = async (req, res) => {
     }
 
     return res.status(201).json(responseMessage);
+
   } catch (error) {
     console.error('Error sending message:', error);
     return res.status(500).json({ message: 'Internal server error' });
