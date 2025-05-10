@@ -7,7 +7,7 @@ const ROUTES = [
             max: 20
         },
         proxy: {
-            target: process.env.USER_SERVICE_URL || "http://user-service:5001",
+            target: process.env.USER_SERVICE_URL || "http://localhost:5001",
             changeOrigin: true,
             pathRewrite: {
                 [`^/api/auth`]: '/api/auth',
@@ -22,7 +22,7 @@ const ROUTES = [
             max: 50
         },
         proxy: {
-            target: process.env.USER_SERVICE_URL || "http://user-service:5001",
+            target: process.env.USER_SERVICE_URL || "http://localhost:5001",
             changeOrigin: true,
             pathRewrite: {
                 [`^/api/users`]: '/api/users',
@@ -37,7 +37,7 @@ const ROUTES = [
             max: 100
         },
         proxy: {
-            target: process.env.MESSAGE_SERVICE_URL || "http://message-service:5002",
+            target: process.env.MESSAGE_SERVICE_URL || "http://localhost:5002",
             changeOrigin: true,
             pathRewrite: {
                 [`^/api/messages`]: '/api/messages',
@@ -91,7 +91,7 @@ const ROUTES = [
             },
         }
     }
-]
+];
 
 // Log the routes configuration
 console.log('Route configurations:');
@@ -99,4 +99,4 @@ ROUTES.forEach(route => {
     console.log(`${route.url} -> ${route.proxy.target}`);
 });
 
-exports.ROUTES = ROUTES;
+module.exports = { ROUTES};

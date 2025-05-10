@@ -1,9 +1,12 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const setupProxies = (app, routes) => {
-    routes.forEach(r => {
-        app.use(r.url, createProxyMiddleware(r.proxy));
-    })
-}
+    routes.forEach(route => {
+        if (route.proxy) {
+            console.log(`Setting up proxy for ${route.url} -> ${route.proxy.target}`);
+            app.use(route.url, createProxyMiddleware(route.proxy));
+        }
+    });
+};
 
-exports.setupProxies = setupProxies
+module.exports = { setupProxies };
