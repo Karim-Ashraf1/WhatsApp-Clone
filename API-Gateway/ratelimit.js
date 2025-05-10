@@ -1,7 +1,7 @@
 const redis = require('./redis.js');
-const WINDOW_SIZE = 60000;
-const MAX_REQUESTS = 5;
-const MIN_INTERVAL = 2000; //2 second between requests per IP
+const WINDOW_SIZE = 60000; // 1 minute
+const MAX_REQUESTS = 100; // Increased from 5 to 100
+const MIN_INTERVAL = 100; // Reduced from 2000ms to 100ms
 
 const slidingWindowRateLimiter = (config) => async (req, res, next) => {
   const userKey = req.user?.username || req.ip;

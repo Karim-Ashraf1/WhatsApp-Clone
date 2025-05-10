@@ -15,9 +15,9 @@ import { app, server, io } from "./lib/socket.js";
 
 
 const PORT = process.env.PORT || 5002;
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:5001";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL || "http://localhost:5000";
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:5001";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://frontend:5173";
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || "http://api-gateway:5000";
 const __dirname = path.resolve();
 
 // Middleware

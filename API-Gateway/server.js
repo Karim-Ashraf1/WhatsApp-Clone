@@ -26,7 +26,7 @@ const port = process.env.PORT || 5000;
 
 // Create WebSocket proxy with more detailed configuration
 const wsProxy = httpProxy.createProxyServer({
-  target: process.env.MESSAGE_SERVICE_URL || 'http://localhost:5002',
+  target: process.env.MESSAGE_SERVICE_URL || 'http://message-service:5002',
   ws: true,
   changeOrigin: true,
   xfwd: true,

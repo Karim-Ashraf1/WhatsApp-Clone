@@ -1,20 +1,74 @@
 version: "3.8"
 
 services:
-  frontend:
-    build: ./frontend
+  # mongo:
+  #   image: mongo:latest
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo-data:/data/db
+  #   networks:
+  #     - app-network
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+  #     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+  #   healthcheck:
+  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # mongo-express:
+  #   image: mongo-express:latest
+  #   restart: always
+  #   ports:
+  #     - "8082:8081"
+  #   environment:
+  #     - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
+  #     - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
+  #     - ME_CONFIG_MONGODB_SERVER=mongo
+  #   depends_on:
+  #     mongo:
+  #       condition: service_healthy
+  #   networks:
+  #     - app-network
+
+  redis:
+    image: redis:alpine
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - api-gateway
+      - "6379:6379"
+    command: redis-server --requirepass A3uug5f1euhk3hqgx1nwiah3od0qoy6nzlego8qgoo8xyda1kb
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   api-gateway:
-    build: ./API-Gateway
+    build:
+      context: ./API-Gateway
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     env_file: .env
@@ -22,26 +76,43 @@ services:
       - ./API-Gateway:/app
       - /app/node_modules
     depends_on:
-      - mongo
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - USER_SERVICE_URL=http://user-service:5001
+      - MESSAGE_SERVICE_URL=http://message-service:5002
+      - FRONTEND_URL=http://frontend:5173
     networks:
       - app-network
 
   user-service:
-    build: ./backend/user-service
+    build:
+      context: ./backend/User-Service
+      dockerfile: Dockerfile
     ports:
       - "5001:5001"
     env_file: .env
     volumes:
-      - ./backend/user-service:/app
+      - ./backend/User-Service:/app
       - /app/node_modules
     depends_on:
-      - mongo
       - api-gateway
+      - minio
+    environment:
+      - API_GATEWAY_URL=http://api-gateway:5000
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     networks:
       - app-network
 
   message-service:
-    build: ./backend/message-service
+    build:
+      context: ./backend/message-service
+      dockerfile: Dockerfile
     ports:
       - "5002:5002"
     env_file: .env
@@ -49,13 +120,25 @@ services:
       - ./backend/message-service:/app
       - /app/node_modules
     depends_on:
-      - mongo
       - api-gateway
+      - minio
+    environment:
+      - MONGO_URI=mongodb+srv://ahmedtaha4442:YQwGX54nfUFvxcxE@cluster0.k1ibcvj.mongodb.net/message-service?retryWrites=true&w=majority&appName=Cluster0
+      - NODE_ENV=production
+      - USER_SERVICE_URL=http://user-service:5001
+      - FRONTEND_URL=http://frontend:5173
+      - API_GATEWAY_URL=http://api-gateway:5000
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     networks:
       - app-network
 
   video-compression-service:
-    build: ./backend/Video-Compression-Service
+    build:
+      context: ./backend/Video-Compression-Service
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     env_file: .env
@@ -63,15 +146,15 @@ services:
       - ./backend/Video-Compression-Service:/app
       - /app/node_modules
       - ./uploads:/app/uploads
-    depends_on:
-      - api-gateway
     networks:
       - app-network
     environment:
       - PORT=8080
 
   image-compression-service:
-    build: ./backend/Image-Compression-Service
+    build:
+      context: ./backend/Image-Compression-Service
+      dockerfile: Dockerfile
     ports:
       - "8081:8081"
     env_file: .env
@@ -79,48 +162,37 @@ services:
       - ./backend/Image-Compression-Service:/usr/src/app
       - /usr/src/app/node_modules
       - ./uploads:/usr/src/app/uploads
-    depends_on:
-      - api-gateway
-    networks:
-      - app-network
-
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-    networks:
-      - app-network
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-
-  mongo-express:
-    image: mongo-express:latest
-    restart: always
-    ports:
-      - "8082:8081"
-    environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
-      - ME_CONFIG_MONGODB_SERVER=mongo
-    depends_on:
-      - mongo
     networks:
       - app-network
 
   audio-service:
-    build: ./backend/Audio-Service
+    build:
+      context: ./backend/Audio-Service
+      dockerfile: Dockerfile
     ports:
       - "5003:5003"
     env_file: .env
     volumes:
       - ./backend/Audio-Service:/app
       - ./uploads:/app/uploads
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
-      - mongo
       - api-gateway
+      - message-service
+    environment:
+      - VITE_API_URL=http://api-gateway:5000
+      - VITE_SOCKET_URL=http://message-service:5002
     networks:
       - app-network
 
@@ -131,3 +203,4 @@ networks:
 volumes:
   mongo-data:
   redis_data:
+  minio_data:

@@ -12,7 +12,9 @@ const io = new Server(server, {
     credentials: true,
     methods: ["GET", "POST"],
   },
-  cookie: true
+  cookie: true,
+  path: '/socket.io/',
+  transports: ['websocket', 'polling']
 });
 
 const userSocketMap = {}; // {userId: socketId}
@@ -21,7 +23,10 @@ export const getReceiverSocketId = (receiverId) => {
   return userSocketMap[receiverId];
 };
 
-io.on("connection", (socket) => {
+// Create a namespace for the main chat
+const chatNamespace = io.of('/');
+
+chatNamespace.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   const userId = socket.handshake.query.userId;
@@ -30,8 +35,8 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} connected with socket ${socket.id}`);
     
     // Notify all clients about the new online user
-    io.emit("userOnline", userId);
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    chatNamespace.emit("userOnline", userId);
+    chatNamespace.emit("getOnlineUsers", Object.keys(userSocketMap));
   }
 
   socket.on("disconnect", () => {
@@ -42,8 +47,8 @@ io.on("connection", (socket) => {
       console.log(`User ${userId} disconnected`);
       
       // Notify all clients about the user going offline
-      io.emit("userOffline", userId);
-      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+      chatNamespace.emit("userOffline", userId);
+      chatNamespace.emit("getOnlineUsers", Object.keys(userSocketMap));
     }
   });
 });
