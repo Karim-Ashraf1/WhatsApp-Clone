@@ -1,19 +1,16 @@
-/**
- * Logger Module
- * Provides structured logging for the notification service
- */
-
 const winston = require('winston');
 
+
 let logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.json(),
-  defaultMeta: { service: 'kafka-notification-service' },
+  level: 'info',                          // How detailed our logs should be
+  format: winston.format.json(),          // Log format
+  defaultMeta: { service: 'kafka-notification-service' },  // Tag all logs with our service name
   transports: [
+    // Output logs to the console
     new winston.transports.Console({
       format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp(),
+        winston.format.colorize(),      
+        winston.format.timestamp(),      
         winston.format.printf(({ timestamp, level, message, ...meta }) => {
           return `[${timestamp}] ${level}: ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
         })
@@ -22,19 +19,16 @@ let logger = winston.createLogger({
   ]
 });
 
-/**
- * Initialize the logger with environment-specific settings
- */
+
 function initLogger() {
   const environment = process.env.NODE_ENV || 'development';
-  
-  // Set log level based on environment
+
   if (environment === 'production') {
-    logger.level = 'warn';
+    logger.level = 'warn';         // Only warnings and errors
   } else if (environment === 'test') {
-    logger.level = 'error';
+    logger.level = 'error';        // Only errors
   } else {
-    logger.level = 'debug';
+    logger.level = 'debug';        // All logs including debug info
   }
   
   logger.info(`Logger initialized in ${environment} environment`);
