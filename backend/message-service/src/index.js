@@ -61,9 +61,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp_
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Create HTTP server
-const server = http.createServer(app);
-
 // Setup Socket.IO and RabbitMQ
 async function startServer() {
     try {

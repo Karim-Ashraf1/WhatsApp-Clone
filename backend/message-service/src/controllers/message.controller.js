@@ -6,7 +6,6 @@ import axios from 'axios';
 import FormData from 'form-data';
 import messageService from '../lib/messageService.js';
 
-
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user.id;

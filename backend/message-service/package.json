@@ -12,6 +12,7 @@
   "type": "module",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.1",
     "amqplib": "^0.10.3",
     "axios": "^1.8.4",
     "cloudinary": "^2.5.1",
@@ -21,11 +22,11 @@
     "express": "^4.21.1",
     "form-data": "^4.0.0",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "minio": "^7.1.1",
     "mongoose": "^8.8.1",
     "mqtt": "^5.3.5",
-    "socket.io": "^4.8.1",
-    "@supabase/supabase-js": "^2.39.1"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
