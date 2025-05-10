@@ -408,3 +408,6 @@ FodyWeavers.xsd
 
 # Video Compression Service
 backend/Video-Compression-Service/.env
+
+# macOS
+.DS_Store

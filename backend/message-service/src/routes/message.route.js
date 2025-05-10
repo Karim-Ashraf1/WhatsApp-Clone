@@ -1,9 +1,13 @@
 import express from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { getMessages, getUsersForSidebar, sendMessage } from "../controllers/message.controller.js";
+import { getMessages, getUsersForSidebar, sendMessage, updateMessageStatus, deleteMessage } from "../controllers/message.controller.js";
 import axios from "axios";
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 router.get("/users", protectRoute, getUsersForSidebar);
 router.get("/:id", protectRoute, getMessages);
@@ -31,5 +35,11 @@ router.get("/user/:userId", protectRoute, async (req, res) => {
         res.status(500).json({ error: "Failed to fetch user profile" });
     }
 });
+
+// Message routes
+router.get('/', getMessages);
+router.post('/', sendMessage);
+router.patch('/:messageId/status', updateMessageStatus);
+router.delete('/:messageId', deleteMessage);
 
 export default router; 
