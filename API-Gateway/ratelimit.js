@@ -2,11 +2,13 @@ const redis = require('./redis.js');
 const WINDOW_SIZE = 60000;
 const MAX_REQUESTS = 5;
 const MIN_INTERVAL = 2000; //2 second between requests per IP
-const slidingWindowRateLimiter = async (req, res, next) => {
-  const userKey = req.user?.username ;
+
+const slidingWindowRateLimiter = (config) => async (req, res, next) => {
+  const userKey = req.user?.username || req.ip;
   const key = `rate_limiter:${userKey}`;
   const now = Date.now();
-  const windowStart = now - WINDOW_SIZE;
+  const windowStart = now - (config.windowMs || WINDOW_SIZE);
+  const maxRequests = config.max || MAX_REQUESTS;
 
   try {
     // Remove timestamps older than the window
@@ -16,7 +18,7 @@ const slidingWindowRateLimiter = async (req, res, next) => {
     const recentRequests = await redis.zrange(key, 0, -1, 'WITHSCORES');
     const requestCount = recentRequests.length / 2;
 
-    if (requestCount >= MAX_REQUESTS) {
+    if (requestCount >= maxRequests) {
       return res.status(429).json({ error: 'Too many requests. Rate limit reached' });
     }
     const lastRequestTime = parseInt(recentRequests[recentRequests.length - 1]); // fetching most recent request to check if the user is spamming
@@ -29,7 +31,7 @@ const slidingWindowRateLimiter = async (req, res, next) => {
     }
     // Add current request with timestamp
     await redis.zadd(key, now, `${now}-${Math.random()}`); // use unique member
-    await redis.pexpire(key, WINDOW_SIZE); // expire the key after the window has passed
+    await redis.pexpire(key, config.windowMs || WINDOW_SIZE); // expire the key after the window has passed
 
     next();
   } catch (err) {
@@ -38,4 +40,12 @@ const slidingWindowRateLimiter = async (req, res, next) => {
   }
 };
 
-module.exports = slidingWindowRateLimiter;
+const setupRateLimit = (app, routes) => {
+  routes.forEach(route => {
+    if (route.rateLimit) {
+      app.use(route.url, slidingWindowRateLimiter(route.rateLimit));
+    }
+  });
+};
+
+module.exports = { setupRateLimit };
