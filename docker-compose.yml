@@ -2,11 +2,11 @@ version: "3.8"
 
 services:
   frontend:
-    build: ./frontEnd
+    build: ./frontend
     ports:
       - "5173:5173"
     volumes:
-      - ./frontEnd:/app
+      - ./frontend:/app
       - /app/node_modules
     depends_on:
       - api-gateway
@@ -14,17 +14,16 @@ services:
       - app-network
 
   api-gateway:
-    build: ./API-Gateway
+    build: ./api-gateway
     ports:
       - "5000:5000"
     env_file: .env
     volumes:
-      - ./API-Gateway:/app
+      - ./api-gateway:/app
       - /app/node_modules
     depends_on:
       - user-service
       - message-service
-      - redis
     networks:
       - app-network
 
@@ -57,7 +56,7 @@ services:
   video-compression-service:
     build: ./backend/Video-Compression-Service
     ports:
-      - "8085:8085"
+      - "8085:8083"
     env_file: .env
     volumes:
       - ./backend/Video-Compression-Service:/app
@@ -94,12 +93,11 @@ services:
     image: mongo-express:latest
     restart: always
     ports:
-      - "8082:8081"
+      - "8082:8081" # Changed external port from 8081 to 8082
     environment:
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
       - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
       - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
     depends_on:
       - mongo
     networks:
@@ -109,20 +107,6 @@ services:
     build: ./backend/Audio-Service
     ports:
       - "5003:5003"
-    env_file: .env
-    volumes:
-      - ./backend/Audio-Service:/app
-      - /app/node_modules
-      - ./uploads:/app/uploads
-    networks:
-      - app-network
-
-  redis:
-    image: redis:latest
-    ports:
-      - "6378:6379"
-    volumes:
-      - redis_data:/data
     networks:
       - app-network
 

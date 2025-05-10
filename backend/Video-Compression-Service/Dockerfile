@@ -1,8 +1,10 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.21-alpine
+
+# Install ffmpeg
+RUN apk add --no-cache ffmpeg
 
 # Set working directory
-WORKDIR /build
+WORKDIR /app
 
 # Copy go mod and sum files
 COPY go.mod ./
@@ -16,26 +18,11 @@ RUN go mod tidy
 # Copy source code
 COPY . .
 
-# Build the application with verbose output
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o server server.go
-
-# Final stage
-FROM alpine:latest
-
-# Install ffmpeg
-RUN apk add --no-cache ffmpeg
-
-# Set working directory
-WORKDIR /app
-
-# Copy the binary from builder
-COPY --from=builder /build/server .
-
-# Make the binary executable
-RUN chmod +x server
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o server server.go
 
 # Expose port
-EXPOSE 8085
+EXPOSE 8083
 
 # Run the application
 CMD ["./server"] 
