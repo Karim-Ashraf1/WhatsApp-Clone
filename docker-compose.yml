@@ -1,37 +1,37 @@
 version: "3.8"
 
 services:
-  # mongo:
-  #   image: mongo:latest
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongo-data:/data/db
-  #   networks:
-  #     - app-network
-  #   environment:
-  #     - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-  #     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-  #   healthcheck:
-  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # mongo-express:
-  #   image: mongo-express:latest
-  #   restart: always
-  #   ports:
-  #     - "8082:8081"
-  #   environment:
-  #     - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
-  #     - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
-  #     - ME_CONFIG_MONGODB_SERVER=mongo
-  #   depends_on:
-  #     mongo:
-  #       condition: service_healthy
-  #   networks:
-  #     - app-network
+  mongo-express:
+    image: mongo-express:latest
+    restart: always
+    ports:
+      - "8082:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
+      - ME_CONFIG_MONGODB_SERVER=mongo
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
 
   redis:
     image: redis:alpine
@@ -106,6 +106,8 @@ services:
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     networks:
       - app-network
 
