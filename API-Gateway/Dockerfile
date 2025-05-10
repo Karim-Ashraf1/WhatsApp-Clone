@@ -5,7 +5,9 @@ WORKDIR /app
 
 # Install dependencies first (for better caching)
 COPY package*.json ./
-RUN npm install --omit=dev
+
+# Install dependencies with legacy peer deps to avoid conflicts
+RUN npm install --legacy-peer-deps
 
 # Copy application code
 COPY . .
@@ -18,4 +20,4 @@ ENV PORT=5000
 EXPOSE 5000
 
 # Run the application
-CMD ["node", "server.js"] 
+CMD ["npm", "start"] 

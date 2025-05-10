@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   frontend:
-    build: ./frontend
+    build: ./frontEnd
     ports:
       - "5173:5173"
     volumes:
@@ -23,8 +23,17 @@ services:
       - /app/node_modules
     depends_on:
       - mongo
+      - redis
     networks:
       - app-network
+    environment:
+      - PORT=5000
+      - REDIS_URL=redis://redis:6379
+      - USER_SERVICE_URL=http://user-service:5001
+      - MESSAGE_SERVICE_URL=http://message-service:5002
+      - FRONTEND_URL=http://localhost:5173
+      - NODE_ENV=development
+      - JWT_SECRET=your_jwt_secret_here
 
   user-service:
     build: ./backend/user-service
@@ -39,6 +48,9 @@ services:
       - api-gateway
     networks:
       - app-network
+    environment:
+      - PORT=5001
+      - MONGODB_URI=mongodb://mongo:27017/whatsapp
 
   message-service:
     build: ./backend/message-service
@@ -53,6 +65,9 @@ services:
       - api-gateway
     networks:
       - app-network
+    environment:
+      - PORT=5002
+      - MONGODB_URI=mongodb://mongo:27017/whatsapp
 
   video-compression-service:
     build: ./backend/Video-Compression-Service
@@ -89,7 +104,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - mongo_data:/data/db
     networks:
       - app-network
     environment:
@@ -97,7 +112,7 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
 
   mongo-express:
-    image: mongo-express:latest
+    image: mongo-express
     restart: always
     ports:
       - "8082:8081"
@@ -124,10 +139,19 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  mongo-data:
+  mongo_data:
   redis_data:

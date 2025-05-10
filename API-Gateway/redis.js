@@ -1,24 +1,21 @@
-const Redis = require('ioredis');
+// import Redis from 'ioredis';
 
-// Redis connection with authentication
-const redis = new Redis({
-  host: 'localhost',
-  port: 6378,
-  password: 'A3uug5f1euhk3hqgx1nwiah3od0qoy6nzlego8qgoo8xyda1kb',
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  maxRetriesPerRequest: 3
-});
+// const redis = new Redis({
+//   host: 'redis',
+//   port: 6379,
+//   password: process.env.REDIS_PASSWORD,
+//   retryStrategy: (times) => {
+//     const delay = Math.min(times * 50, 2000);
+//     return delay;
+//   }
+// });
 
-redis.on('connect', () => {
-  console.log('[Redis] Connected successfully to localhost:6378');
-});
+// redis.on('connect', () => {
+//   console.log('Redis connected successfully');
+// });
 
-redis.on('error', (err) => {
-  console.error('[Redis] Connection error:', err.message);
-  console.log('[Redis] Attempting to reconnect...');
-});
+// redis.on('error', (err) => {
+//   console.error('Redis connection error:', err);
+// });
 
-module.exports = redis;
+// export default redis;

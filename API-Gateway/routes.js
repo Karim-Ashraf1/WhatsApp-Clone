@@ -91,7 +91,7 @@ const ROUTES = [
             },
         }
     }
-]
+];
 
 // Log the routes configuration
 console.log('Route configurations:');
@@ -99,4 +99,9 @@ ROUTES.forEach(route => {
     console.log(`${route.url} -> ${route.proxy.target}`);
 });
 
-exports.ROUTES = ROUTES;
+const setupRoutes = (app) => {
+    // Add any additional route setup here if needed
+    console.log('Routes setup complete');
+};
+
+module.exports = { ROUTES, setupRoutes };

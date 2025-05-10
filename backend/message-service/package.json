@@ -21,7 +21,8 @@
     "mongoose": "^8.8.1",
     "mqtt": "^5.3.5",
     "socket.io": "^4.8.1",
-    "minio": "^7.1.1"
+    "minio": "^7.1.1",
+    "@supabase/supabase-js": "^2.39.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
