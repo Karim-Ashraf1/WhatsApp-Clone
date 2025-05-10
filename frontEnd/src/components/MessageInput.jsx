@@ -1,13 +1,11 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X, Mic } from "lucide-react";
+import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
-import AudioMessage from "./Chat/AudioMessage";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
 
@@ -46,33 +44,6 @@ const MessageInput = () => {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
-    }
-  };
-
-  const handleAudioRecording = async (audioBlob) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.wav');
-      formData.append('sender', useChatStore.getState().currentUser);
-      formData.append('recipient', useChatStore.getState().selectedChat);
-
-      const response = await fetch('/api/audio/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload audio');
-      }
-
-      const data = await response.json();
-      await sendMessage({
-        type: 'audio',
-        audioUrl: `/api/audio/${data.filename}`,
-      });
-    } catch (error) {
-      console.error('Failed to send audio message:', error);
-      toast.error('Failed to send audio message');
     }
   };
 
@@ -123,12 +94,6 @@ const MessageInput = () => {
           >
             <Image size={20} />
           </button>
-
-          <AudioMessage
-            onSend={setIsRecording}
-            isRecording={isRecording}
-            onRecordingComplete={handleAudioRecording}
-          />
         </div>
         <button
           type="submit"

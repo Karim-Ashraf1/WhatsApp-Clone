@@ -45,6 +45,21 @@ const ROUTES = [
         }
     },
     {
+        url: '/api/cache',
+        auth: true,
+        rateLimit: {
+            windowMs: 60 * 1000,
+            max: 200
+        },
+        proxy: {
+            target: process.env.CACHE_SERVICE_URL || "http://cache-service:5004",
+            changeOrigin: true,
+            pathRewrite: {
+                [`^/api/cache`]: '/api/cache',
+            },
+        }
+    },
+    {
         url: '/api/audio',
         auth: true,
         rateLimit: {
@@ -99,4 +114,4 @@ ROUTES.forEach(route => {
     console.log(`${route.url} -> ${route.proxy.target}`);
 });
 
-module.exports = { ROUTES};
+module.exports = { ROUTES };

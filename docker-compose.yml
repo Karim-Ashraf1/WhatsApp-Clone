@@ -198,6 +198,26 @@ services:
     networks:
       - app-network
 
+  cache-service:
+    build:
+      context: ./backend/cache-service
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5004"
+    env_file: .env
+    volumes:
+      - ./backend/cache-service:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=A3uug5f1euhk3hqgx1nwiah3od0qoy6nzlego8qgoo8xyda1kb
+      - API_GATEWAY_URL=http://api-gateway:5000
+      - FRONTEND_URL=http://frontend:5173
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
