@@ -28,12 +28,12 @@ services:
       - app-network
 
   user-service:
-    build: ./backend/user-service
+    build: ./user-service
     ports:
       - "5001:5001"
     env_file: .env
     volumes:
-      - ./backend/user-service:/app
+      - ./user-service:/app
       - /app/node_modules
     depends_on:
       - mongo
@@ -41,12 +41,12 @@ services:
       - app-network
 
   message-service:
-    build: ./backend/message-service
+    build: ./message-service
     ports:
       - "5002:5002"
     env_file: .env
     volumes:
-      - ./backend/message-service:/app
+      - ./message-service:/app
       - /app/node_modules
     depends_on:
       - mongo
@@ -54,12 +54,12 @@ services:
       - app-network
 
   video-compression-service:
-    build: ./backend/Video-Compression-Service
+    build: ./video-compression-service
     ports:
-      - "8085:8083"
+      - "8080:8080"
     env_file: .env
     volumes:
-      - ./backend/Video-Compression-Service:/app
+      - ./video-compression-service:/app
       - /app/node_modules
       - ./uploads:/app/uploads
     networks:
