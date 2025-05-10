@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultQuality = 23
-	port           = 8083
+	port           = 8080
 )
 
 func main() {

@@ -4,8 +4,9 @@ const Redis = require('ioredis');
 console.log('Redis Environment Variables:');
 console.log('REDIS_URL:', process.env.REDIS_URL);
 
-// Force local Redis connection
-const redisUrl = 'redis://localhost:6378';
+// Format Redis URL with authentication
+const redisPassword = process.env.REDIS_URL;
+const redisUrl = `redis://:${redisPassword}@localhost:6378`;
 console.log('Using Redis URL:', redisUrl);
 
 const redis = new Redis(redisUrl, {
