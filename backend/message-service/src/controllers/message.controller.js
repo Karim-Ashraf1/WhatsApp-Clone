@@ -140,7 +140,28 @@ export const sendMessage = async (req, res) => {
         await minioClient.putObject('messages', fileName, buffer, {
           'Content-Type': 'video/mp4',
           'Content-Disposition': 'inline',
+          'Cache-Control': 'public, max-age=31536000'
         });
+
+        // Set bucket policy to allow public read access
+        const policy = {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: '*',
+              Action: ['s3:GetObject'],
+              Resource: ['arn:aws:s3:::messages/*']
+            }
+          ]
+        };
+
+        try {
+          await minioClient.setBucketPolicy('messages', JSON.stringify(policy));
+          console.log('Successfully set bucket policy for public read access');
+        } catch (policyError) {
+          console.error('Error setting bucket policy:', policyError);
+        }
         
         videoFileName = fileName;
       } catch (error) {

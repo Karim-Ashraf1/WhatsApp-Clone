@@ -18,14 +18,7 @@ const ensureBucketsExist = async () => {
             console.log('Created messages bucket');
         }
 
-        // Ensure profile-pictures bucket exists
-        const profilePicturesBucketExists = await minioClient.bucketExists('profile-pictures');
-        if (!profilePicturesBucketExists) {
-            await minioClient.makeBucket('profile-pictures');
-            console.log('Created profile-pictures bucket');
-        }
-
-        // Set bucket policies to public read
+        // Set bucket policy to allow public read access
         const policy = {
             Version: '2012-10-17',
             Statement: [
@@ -33,14 +26,24 @@ const ensureBucketsExist = async () => {
                     Effect: 'Allow',
                     Principal: '*',
                     Action: ['s3:GetObject'],
-                    Resource: ['arn:aws:s3:::messages/*', 'arn:aws:s3:::profile-pictures/*']
+                    Resource: ['arn:aws:s3:::messages/*']
                 }
             ]
         };
 
         await minioClient.setBucketPolicy('messages', JSON.stringify(policy));
+        console.log('Set bucket policy for public read access');
+
+        // Ensure profile-pictures bucket exists
+        const profilePicturesBucketExists = await minioClient.bucketExists('profile-pictures');
+        if (!profilePicturesBucketExists) {
+            await minioClient.makeBucket('profile-pictures');
+            console.log('Created profile-pictures bucket');
+        }
+
+        // Set profile-pictures bucket policy
         await minioClient.setBucketPolicy('profile-pictures', JSON.stringify(policy));
-        console.log('Set bucket policies to public read');
+        console.log('Set profile-pictures bucket policy for public read access');
     } catch (error) {
         console.error('Error ensuring buckets exist:', error);
     }
