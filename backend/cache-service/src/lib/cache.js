@@ -1,8 +1,24 @@
+const { createClient } = require('redis');
+
 class CacheService {
     constructor() {
-        this.cache = new Map();
-        this.ttls = new Map();
-        this.cleanupInterval = setInterval(() => this.cleanup(), 60000); // Cleanup every minute
+        this.redisClient = createClient({
+            url: process.env.REDIS_URL || 'redis://redis:6379',
+            password: process.env.REDIS_PASSWORD || 'A3uug5f1euhk3hqgx1nwiah3od0qoy6nzlego8qgoo8xyda1kb'
+        });
+
+        // Connect to Redis
+        this.connect();
+    }
+
+    async connect() {
+        try {
+            await this.redisClient.connect();
+            console.log('Connected to Redis');
+        } catch (error) {
+            console.error('Failed to connect to Redis:', error);
+            process.exit(1);
+        }
     }
 
     // Message-specific caching methods
@@ -39,75 +55,97 @@ class CacheService {
     }
 
     // Generic caching methods
-    set(key, value, ttl = 3600) {
-        const expiry = Date.now() + (ttl * 1000);
-        this.cache.set(key, value);
-        this.ttls.set(key, expiry);
-        return true;
+    async set(key, value, ttl = 3600) {
+        try {
+            const stringValue = JSON.stringify(value);
+            if (ttl) {
+                await this.redisClient.set(key, stringValue, { EX: ttl });
+            } else {
+                await this.redisClient.set(key, stringValue);
+            }
+            return true;
+        } catch (error) {
+            console.error('Error setting cache:', error);
+            return false;
+        }
     }
 
-    get(key) {
-        if (!this.cache.has(key)) {
+    async get(key) {
+        try {
+            const value = await this.redisClient.get(key);
+            return value ? JSON.parse(value) : null;
+        } catch (error) {
+            console.error('Error getting cache:', error);
             return null;
         }
+    }
 
-        const expiry = this.ttls.get(key);
-        if (Date.now() > expiry) {
-            this.delete(key);
-            return null;
+    async delete(key) {
+        try {
+            const deleted = await this.redisClient.del(key);
+            return deleted > 0;
+        } catch (error) {
+            console.error('Error deleting cache:', error);
+            return false;
         }
-
-        return this.cache.get(key);
     }
 
-    delete(key) {
-        this.cache.delete(key);
-        this.ttls.delete(key);
-        return true;
-    }
-
-    deletePattern(pattern) {
-        const regex = new RegExp(pattern);
-        let deletedCount = 0;
-
-        for (const key of this.cache.keys()) {
-            if (regex.test(key)) {
-                this.delete(key);
-                deletedCount++;
+    async deletePattern(pattern) {
+        try {
+            const keys = await this.redisClient.keys(pattern);
+            if (keys.length > 0) {
+                await this.redisClient.del(keys);
             }
-        }
-
-        return deletedCount;
-    }
-
-    has(key) {
-        return this.get(key) !== null;
-    }
-
-    cleanup() {
-        const now = Date.now();
-        for (const [key, expiry] of this.ttls.entries()) {
-            if (now > expiry) {
-                this.delete(key);
-            }
+            return keys.length;
+        } catch (error) {
+            console.error('Error deleting pattern:', error);
+            return 0;
         }
     }
 
-    clear() {
-        this.cache.clear();
-        this.ttls.clear();
+    async has(key) {
+        try {
+            return await this.redisClient.exists(key) === 1;
+        } catch (error) {
+            console.error('Error checking cache:', error);
+            return false;
+        }
     }
 
-    getStats() {
-        return {
-            size: this.cache.size,
-            keys: Array.from(this.cache.keys()),
-            memoryUsage: process.memoryUsage().heapUsed
-        };
+    async clear() {
+        try {
+            await this.redisClient.flushAll();
+            return true;
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+            return false;
+        }
+    }
+
+    async getStats() {
+        try {
+            const info = await this.redisClient.info();
+            const keys = await this.redisClient.keys('*');
+            
+            return {
+                size: keys.length,
+                keys: keys,
+                memoryUsage: info.split('\n').find(line => line.startsWith('used_memory_human')),
+                uptime: info.split('\n').find(line => line.startsWith('uptime_in_seconds'))
+            };
+        } catch (error) {
+            console.error('Error getting stats:', error);
+            return {
+                size: 0,
+                keys: [],
+                memoryUsage: 'unknown',
+                uptime: 'unknown'
+            };
+        }
     }
 }
 
 // Create a singleton instance
 const cacheService = new CacheService();
 
-export default cacheService; 
+module.exports = cacheService; 

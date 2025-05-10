@@ -1,7 +1,7 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import cacheRoutes from './routes/cache.route.js';
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const cacheRoutes = require('./routes/cache.route.js');
 
 dotenv.config();
 

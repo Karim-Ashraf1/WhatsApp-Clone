@@ -52,5 +52,8 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(socket\\.io.*)/)"
     ]
+  },
+  "imports": {
+    "#shared-services/*": "../shared-services/*"
   }
 }

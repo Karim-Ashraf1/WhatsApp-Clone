@@ -1,5 +1,5 @@
-import express from 'express';
-import cacheService from '../lib/cache.js';
+const express = require('express');
+const cacheService = require('../lib/cache.js');
 
 const router = express.Router();
 
@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const value = cacheService.get(key);
+        const value = await cacheService.get(key);
         
         if (!value) {
             return res.status(404).json({ error: 'Cache key not found' });
@@ -20,15 +20,16 @@ router.get('/:key', async (req, res) => {
 });
 
 // Set cache value
-router.post('/', async (req, res) => {
+router.post('/:key', async (req, res) => {
     try {
-        const { key, value, ttl } = req.body;
+        const { key } = req.params;
+        const { value, ttl } = req.body;
         
-        if (!key || value === undefined) {
-            return res.status(400).json({ error: 'Key and value are required' });
+        if (value === undefined) {
+            return res.status(400).json({ error: 'Value is required' });
         }
 
-        cacheService.set(key, value, ttl);
+        await cacheService.set(key, value, ttl);
         res.status(201).json({ key, value });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -39,7 +40,7 @@ router.post('/', async (req, res) => {
 router.delete('/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const deleted = cacheService.delete(key);
+        const deleted = await cacheService.delete(key);
         
         if (!deleted) {
             return res.status(404).json({ error: 'Cache key not found' });
@@ -54,7 +55,7 @@ router.delete('/:key', async (req, res) => {
 // Clear all cache
 router.delete('/', async (req, res) => {
     try {
-        cacheService.clear();
+        await cacheService.clear();
         res.json({ message: 'All cache cleared successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -64,7 +65,7 @@ router.delete('/', async (req, res) => {
 // Get cache stats
 router.get('/stats', async (req, res) => {
     try {
-        const stats = cacheService.getStats();
+        const stats = await cacheService.getStats();
         res.json(stats);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -113,4 +114,4 @@ router.delete('/messages/:userId', async (req, res) => {
     }
 });
 
-export default router; 
+module.exports = router; 

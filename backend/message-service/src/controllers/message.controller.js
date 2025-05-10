@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase.js';
 import { Message } from "../models/message.model.js";
 import minioClient from "../lib/minio.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
+import cacheClient from '../../../shared-services/cache-client.js';
 
 export const getUsersForSidebar = async (req, res) => {
   try {
@@ -45,7 +46,15 @@ export const getMessages = async (req, res) => {
       return res.status(400).json({ error: "User ID is required" });
     }
 
-    // Get messages between the two users
+    // Try to get messages from cache first
+    const cacheKey = `messages:${myId}:${userToChatId}`;
+    const cachedMessages = await cacheClient.get(cacheKey);
+    
+    if (cachedMessages) {
+      return res.status(200).json(cachedMessages);
+    }
+
+    // If not in cache, get from database
     const messages = await Message.find({
       $or: [
         { sender_id: myId, receiver_id: userToChatId },
@@ -62,6 +71,9 @@ export const getMessages = async (req, res) => {
         image: messageObj.image ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${messageObj.image}` : null
       };
     });
+
+    // Cache the processed messages
+    await cacheClient.set(cacheKey, processedMessages, 3600); // Cache for 1 hour
 
     res.status(200).json(processedMessages);
   } catch (error) {
@@ -114,6 +126,22 @@ export const sendMessage = async (req, res) => {
       created_at: newMessage.createdAt,
       image: newMessage.image ? `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/messages/${newMessage.image}` : null
     };
+
+    // Update cache for both users
+    const cacheKey1 = `messages:${senderId}:${receiverId}`;
+    const cacheKey2 = `messages:${receiverId}:${senderId}`;
+    
+    // Get existing messages from cache
+    const existingMessages1 = await cacheClient.get(cacheKey1) || [];
+    const existingMessages2 = await cacheClient.get(cacheKey2) || [];
+    
+    // Add new message to both caches
+    existingMessages1.push(responseMessage);
+    existingMessages2.push(responseMessage);
+    
+    // Update both caches
+    await cacheClient.set(cacheKey1, existingMessages1, 3600);
+    await cacheClient.set(cacheKey2, existingMessages2, 3600);
 
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
