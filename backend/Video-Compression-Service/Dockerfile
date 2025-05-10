@@ -16,7 +16,7 @@ RUN go build -o /usr/local/bin/video-compression-service
 RUN mkdir -p /app/temp
 
 # Expose the port the service runs on
-EXPOSE 8083
+EXPOSE 8080
 
 # Command to run the executable
 CMD ["/usr/local/bin/video-compression-service"] 
