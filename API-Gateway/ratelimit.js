@@ -1,25 +1,42 @@
-const redis = require('./redis.js');
-const WINDOW_SIZE = 60000;
+const WINDOW_SIZE = 60000; // 1 minute window
 const MAX_REQUESTS = 5;
-const MIN_INTERVAL = 2000; //2 second between requests per IP
+const MIN_INTERVAL = 2000; // 2 seconds between requests per IP
+
+// In-memory store for rate limiting
+const requestStore = new Map();
+
+// Clean up old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, requests] of requestStore.entries()) {
+    const validRequests = requests.filter(time => now - time < WINDOW_SIZE);
+    if (validRequests.length === 0) {
+      requestStore.delete(key);
+    } else {
+      requestStore.set(key, validRequests);
+    }
+  }
+}, WINDOW_SIZE);
+
 const slidingWindowRateLimiter = async (req, res, next) => {
-  const userKey = req.user?.username ;
+  const userKey = req.user?.username;
   const key = `rate_limiter:${userKey}`;
   const now = Date.now();
-  const windowStart = now - WINDOW_SIZE;
 
   try {
+    // Get or initialize user's request timestamps
+    let userRequests = requestStore.get(key) || [];
+    
     // Remove timestamps older than the window
-    await redis.zremrangebyscore(key, 0, windowStart);
-
-    // Count current requests in window
-    const recentRequests = await redis.zrange(key, 0, -1, 'WITHSCORES');
-    const requestCount = recentRequests.length / 2;
-
-    if (requestCount >= MAX_REQUESTS) {
+    userRequests = userRequests.filter(time => now - time < WINDOW_SIZE);
+    
+    // Check if user has exceeded the rate limit
+    if (userRequests.length >= MAX_REQUESTS) {
       return res.status(429).json({ error: 'Too many requests. Rate limit reached' });
     }
-    const lastRequestTime = parseInt(recentRequests[recentRequests.length - 1]); // fetching most recent request to check if the user is spamming
+
+    // Check minimum interval between requests
+    const lastRequestTime = userRequests[userRequests.length - 1];
     if (lastRequestTime && now - lastRequestTime < MIN_INTERVAL) {
       const wait = MIN_INTERVAL - (now - lastRequestTime);
       return res.status(429).json({
@@ -27,14 +44,15 @@ const slidingWindowRateLimiter = async (req, res, next) => {
         retryIn: `${wait}ms`,
       });
     }
-    // Add current request with timestamp
-    await redis.zadd(key, now, `${now}-${Math.random()}`); // use unique member
-    await redis.pexpire(key, WINDOW_SIZE); // expire the key after the window has passed
+
+    // Add current request timestamp
+    userRequests.push(now);
+    requestStore.set(key, userRequests);
 
     next();
   } catch (err) {
-    console.error('[SlidingWindowLimiter] Redis error:', err);
-    res.status(500).json({ error: 'Internal server error' }); 
+    console.error('[SlidingWindowLimiter] Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

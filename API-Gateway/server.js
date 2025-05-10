@@ -6,6 +6,7 @@ const httpProxy = require('http-proxy');
 const http = require('http');
 
 const {ROUTES} = require("./routes");
+const redis = require('./redis.js');
 
 const {setupLogging} = require("./logging");
 const {setupRateLimit} = require("./ratelimit");
@@ -19,6 +20,7 @@ console.log('USER_SERVICE_URL:', process.env.USER_SERVICE_URL || 'http://localho
 console.log('MESSAGE_SERVICE_URL:', process.env.MESSAGE_SERVICE_URL || 'http://localhost:5002');
 console.log('FRONTEND_URL:', process.env.FRONTEND_URL || 'http://localhost:5173');
 console.log('JWT_SECRET present:', process.env.JWT_SECRET ? 'Yes' : 'No');
+console.log('REDIS_URL:', process.env.REDIS_URL || 'redis://localhost:6379');
 
 const app = express();
 const server = http.createServer(app);
@@ -65,6 +67,39 @@ app.use(cors({
     credentials: true
 }));
 
+// Redis caching middleware
+const cacheMiddleware = async (req, res, next) => {
+  // Skip caching for non-GET requests
+  if (req.method !== 'GET') {
+    return next();
+  }
+
+  try {
+    const cacheKey = `cache:${req.originalUrl}`;
+    const cachedData = await redis.getCache(cacheKey);
+
+    if (cachedData) {
+      console.log(`Cache hit for ${req.originalUrl}`);
+      return res.json(cachedData);
+    }
+
+    // Store the original res.json method
+    const originalJson = res.json;
+
+    // Override res.json method
+    res.json = function(data) {
+      // Cache the response
+      redis.cache(cacheKey, data, 300); // Cache for 5 minutes
+      return originalJson.call(this, data);
+    };
+
+    next();
+  } catch (error) {
+    console.error('Cache middleware error:', error);
+    next();
+  }
+};
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('API Gateway error:', err);
@@ -78,6 +113,7 @@ app.use((err, req, res, next) => {
 setupLogging(app);
 setupRateLimit(app, ROUTES);
 setupAuth(app, ROUTES);
+app.use(cacheMiddleware); // Add Redis caching middleware
 setupProxies(app, ROUTES);
 
 // Health check endpoint
