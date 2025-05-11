@@ -16,7 +16,7 @@ const io = new Server(server, {
   cookie: true
 });
 
-const userSocketMap = {}; // {userId: socketId}
+const userSocketMap = {}; 
 
 export const getReceiverSocketId = (receiverId) => {
   return userSocketMap[receiverId];
@@ -30,12 +30,12 @@ io.on("connection", (socket) => {
     userSocketMap[userId] = socket.id;
     console.log(`User ${userId} connected with socket ${socket.id}`);
     
-    // Notify all clients about the new online user
+    
     io.emit("userOnline", userId);
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   }
 
-  // Handle message status updates
+  
   socket.on("messageDelivered", async ({ messageId }) => {
     try {
       const message = await Message.findById(messageId);
@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
         message.status = 'delivered';
         await message.save();
         
-        // Notify sender about delivery
+       
         const senderSocketId = userSocketMap[message.sender_id];
         if (senderSocketId) {
           io.to(senderSocketId).emit("messageStatusUpdate", {
@@ -64,7 +64,7 @@ io.on("connection", (socket) => {
         message.status = 'read';
         await message.save();
         
-        // Notify sender about read status
+        
         const senderSocketId = userSocketMap[message.sender_id];
         if (senderSocketId) {
           io.to(senderSocketId).emit("messageStatusUpdate", {
@@ -85,7 +85,7 @@ io.on("connection", (socket) => {
       delete userSocketMap[userId];
       console.log(`User ${userId} disconnected`);
       
-      // Notify all clients about the user going offline
+      
       io.emit("userOffline", userId);
       io.emit("getOnlineUsers", Object.keys(userSocketMap));
     }

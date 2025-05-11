@@ -9,7 +9,7 @@ export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user.id;
     
-    // Get all users except the logged-in user
+    
     const { data: users, error } = await supabase
       .from('users')
       .select('id, full_name, email, profile_pic')
@@ -20,7 +20,7 @@ export const getUsersForSidebar = async (req, res) => {
       return res.status(500).json({ message: 'Error fetching users' });
     }
 
-    // Get online users from socket
+   
     const onlineUsers = req.app.get('onlineUsers') || new Set();
     
     const filteredUsers = users.map(user => ({
@@ -47,7 +47,7 @@ export const getMessages = async (req, res) => {
       return res.status(400).json({ error: "User ID is required" });
     }
 
-    // Get messages between the two users
+    
     const messages = await Message.find({
       $or: [
         { sender_id: myId, receiver_id: userToChatId },
@@ -55,7 +55,7 @@ export const getMessages = async (req, res) => {
       ]
     }).sort({ createdAt: 1 });
 
-    // Process messages to ensure proper image and video URLs and timestamp field
+    
     const processedMessages = messages.map(message => {
       const messageObj = message.toObject();
       return {
@@ -88,21 +88,21 @@ export const sendMessage = async (req, res) => {
 
     if (image) {
       try {
-        // Remove the data URL prefix if present
+       
         const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
         const buffer = Buffer.from(base64Data, 'base64');
         
-        // Send the image to the compression service first
+       
         const IMAGE_COMPRESSION_URL = process.env.IMAGE_COMPRESSION_URL || 'http://localhost:8084';
         
-        // Create form data for the compression service
+        
         const formData = new FormData();
         formData.append('file', buffer, {
           filename: 'image.jpg',
           contentType: 'image/jpeg',
         });
         
-        // Send to compression service
+      
         const compressResponse = await axios.post(`${IMAGE_COMPRESSION_URL}/compress`, formData, {
           headers: {
             ...formData.getHeaders(),
@@ -110,10 +110,10 @@ export const sendMessage = async (req, res) => {
           responseType: 'arraybuffer',
         });
         
-        // Get the compressed image buffer
+        
         const compressedBuffer = Buffer.from(compressResponse.data);
         
-        // Upload compressed image to MinIO
+       
         const fileName = `message-${Date.now()}.jpg`;
         
         await minioClient.putObject('messages', fileName, compressedBuffer, {
@@ -130,11 +130,11 @@ export const sendMessage = async (req, res) => {
 
     if (video) {
       try {
-        // Remove the data URL prefix if present
+   
         const base64Data = video.includes('base64,') ? video.split('base64,')[1] : video;
         const buffer = Buffer.from(base64Data, 'base64');
         
-        // Upload video to MinIO
+
         const fileName = `video-${Date.now()}.mp4`;
         
         await minioClient.putObject('messages', fileName, buffer, {
@@ -143,7 +143,7 @@ export const sendMessage = async (req, res) => {
           'Cache-Control': 'public, max-age=31536000'
         });
 
-        // Set bucket policy to allow public read access
+    
         const policy = {
           Version: '2012-10-17',
           Statement: [
@@ -181,7 +181,7 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    // Add the full URLs for the response
+
     const responseMessage = {
       ...newMessage.toObject(),
       created_at: newMessage.createdAt,
@@ -201,7 +201,7 @@ export const sendMessage = async (req, res) => {
   }
 };
 
-// Add new endpoint to get message status
+
 export const getMessageStatus = async (req, res) => {
   try {
     const { messageId } = req.params;
