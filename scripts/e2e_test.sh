@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Base URL for the API Gateway
-BASE_URL="http://localhost:3000"
+BASE_URL="http://localhost:5000"
 
 info() {
   echo -e "\n=== $1 ==="
