@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -9,8 +10,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var (
@@ -19,37 +20,64 @@ var (
 	frontendURL    = getEnv("FRONTEND_URL", "http://localhost:5173")
 	userServiceURL = getEnv("USER_SERVICE_URL", "http://localhost:5001")
 	apiGatewayURL  = getEnv("API_GATEWAY_URL", "http://localhost:5000")
-	redisURL       = getEnv("REDIS_URL", "redis://localhost:6379")
+	rabbitmqURL    = getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 )
 
-// Redis client
-var rdb *redis.Client
+// Message represents a chat message
+type Message struct {
+	ID        string    `json:"id"`
+	Content   string    `json:"content"`
+	Sender    string    `json:"sender"`
+	Receiver  string    `json:"receiver"`
+	Timestamp time.Time `json:"timestamp"`
+}
 
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		// Allow connections from frontend, user service, and API gateway
 		origin := r.Header.Get("Origin")
 		return origin == frontendURL || origin == userServiceURL || origin == apiGatewayURL
 	},
 }
 
-func main() {
-	// Initialize Redis client
-	opt, err := redis.ParseURL(redisURL)
-	if err != nil {
-		log.Fatalf("Failed to parse Redis URL: %v", err)
-	}
-	rdb = redis.NewClient(opt)
+// RabbitMQ connection and channel
+var (
+	conn    *amqp.Connection
+	channel *amqp.Channel
+)
 
-	// Test Redis connection
-	ctx := context.Background()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+func main() {
+	// Initialize RabbitMQ connection
+	var err error
+	conn, err = amqp.Dial(rabbitmqURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
-	log.Println("Connected to Redis successfully")
+	defer conn.Close()
+
+	channel, err = conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open channel: %v", err)
+	}
+	defer channel.Close()
+
+	// Declare queues
+	_, err = channel.QueueDeclare(
+		"messages", // queue name
+		true,       // durable
+		false,      // delete when unused
+		false,      // exclusive
+		false,      // no-wait
+		nil,        // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare queue: %v", err)
+	}
+
+	// Start consumer in a goroutine
+	go startConsumer()
 
 	// Initialize Gin router
 	router := gin.Default()
@@ -76,7 +104,7 @@ func main() {
 
 	// Log important configuration
 	log.Printf("Broker service running on port: %s", port)
-	log.Printf("Connected to Redis at: %s", redisURL)
+	log.Printf("Connected to RabbitMQ at: %s", rabbitmqURL)
 	log.Printf("Accepting connections from frontend at: %s", frontendURL)
 	log.Printf("API Gateway URL: %s", apiGatewayURL)
 
@@ -97,32 +125,72 @@ func handleWebSocket(c *gin.Context) {
 
 	// Handle WebSocket connection
 	for {
-		messageType, message, err := conn.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Printf("Error reading message: %v", err)
 			break
 		}
 
-		// Process message
-		if err := processMessage(message); err != nil {
-			log.Printf("Error processing message: %v", err)
+		// Process message as producer
+		if err := publishMessage(message); err != nil {
+			log.Printf("Error publishing message: %v", err)
 			continue
-		}
-
-		// Echo message back to client
-		if err := conn.WriteMessage(messageType, message); err != nil {
-			log.Printf("Error writing message: %v", err)
-			break
 		}
 	}
 }
 
-// processMessage processes incoming messages
-func processMessage(message []byte) error {
-	ctx := context.Background()
+// publishMessage publishes a message to RabbitMQ
+func publishMessage(message []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Store message in Redis
-	return rdb.Publish(ctx, "messages", message).Err()
+	return channel.PublishWithContext(ctx,
+		"",         // exchange
+		"messages", // routing key
+		false,      // mandatory
+		false,      // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        message,
+		})
+}
+
+// startConsumer starts consuming messages from RabbitMQ
+func startConsumer() {
+	msgs, err := channel.Consume(
+		"messages", // queue
+		"",         // consumer
+		true,       // auto-ack
+		false,      // exclusive
+		false,      // no-local
+		false,      // no-wait
+		nil,        // args
+	)
+	if err != nil {
+		log.Fatalf("Failed to register a consumer: %v", err)
+	}
+
+	forever := make(chan bool)
+
+	go func() {
+		for d := range msgs {
+			// Process received message
+			var msg Message
+			if err := json.Unmarshal(d.Body, &msg); err != nil {
+				log.Printf("Error unmarshaling message: %v", err)
+				continue
+			}
+
+			// Here you would typically:
+			// 1. Store the message in a database
+			// 2. Notify relevant users
+			// 3. Handle message delivery status
+			log.Printf("Received message: %+v", msg)
+		}
+	}()
+
+	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	<-forever
 }
 
 // getEnv gets an environment variable or returns a default value
